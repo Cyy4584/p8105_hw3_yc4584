@@ -129,9 +129,13 @@ p2 = ny_noaa |>
   )
 print(p2)
 ```
-```{r plot combination}
+
+Combination of p1 and p2
+```{r Combination of p1 and p2}
 library(gridExtra)
-p1p2 = grid.arrange(p1, p2, nrow = 1)
+grid.arrange(p1, p2, nrow = 1) 
 ```
+
+
 
 
