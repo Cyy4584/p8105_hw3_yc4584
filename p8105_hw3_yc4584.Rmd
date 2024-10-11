@@ -137,5 +137,117 @@ grid.arrange(p1, p2, nrow = 1)
 ```
 
 
+# Problem 2
+Load data
+```{r load data2}
+demographic_df = read_csv("./data/nhanes_covar.csv", skip = 4)
+accelerometer_df = read_csv("./data/nhanes_accel.csv")
+```
+tidy the data 
+```{r tidy the data for demographic_df}
+demographic_df = demographic_df |> 
+  janitor::clean_names() |>
+  drop_na() |> 
+  filter(age >= 21) |> 
+  mutate(sex = as.character(sex)) |> 
+  mutate(
+    sex = case_when(
+      sex == "1" ~ "male",
+      sex == "2" ~ "female")) |>
+  mutate(education = as.character(education)) |> 
+  mutate(
+    education = case_when(
+      education == "1" ~ "less than high school",
+      education == "2" ~ "high school equivalent",
+      education == "3" ~ "more than high school")) |> 
+  mutate(
+    education = factor(
+      education, 
+      levels = c("less than high school", "high school equivalent", "more than high school")))
+```
 
+```{r tidy the data for accelerometer_df}
+accelerometer_df = accelerometer_df |> 
+  janitor::clean_names()
+```
+merge the data sets
+```{r merge the data sets}
+merge_df = left_join(demographic_df, accelerometer_df, by = "seqn")
+print(merge_df)
+```
+
+
+men and women in each education category
+```{r men and women in each education}
+gender_education_df = merge_df |> 
+  group_by(sex, education) |>
+  summarize(count = n()) |> 
+  pivot_wider(names_from = education, values_from = count)
+print(gender_education_df)
+```
+
+age distribution for men and women in different education
+```{r age distribution}
+hist_distribution = merge_df |>
+  ggplot(aes(x = age, fill = sex)) +
+  geom_histogram(alpha = 0.5, position = "identity") +
+  facet_wrap(~ education) +
+  labs(
+    title = "Age Distribution by Gender in Each Education Category",
+    x = "Age",
+    y = "Count",
+    fill = "Gender"
+  ) 
+print(hist_distribution)
+```
+We could see from this histogram and the table that in this study the people from the "more than high school" education category are the most, and the number of people from the "less than high school" and "high school equivalent" education category are similar. In the "high school equivalent" education level, the number of women are more than men, but in the other two education levels, the number of men and women are similar. The age distribution in the "more than high school" education category is more concentrated in the younger age, and the age distribution in the "less than high school" education category is more concentrated in the older age. The age distribution in the "high school equivalent" education category is concentrated in the extreme young and extreme old age, the distribution in the middle age is pretty much even.
+
+plot total activity against age
+```{r total activity calculation and add to merge_df}
+start_col = which(names(merge_df) == "min1")
+end_col = which(names(merge_df) == "min1440")
+numeric_cols_to_sum = names(merge_df)[start_col:end_col]
+merge_df$total_activity = rowSums(merge_df[numeric_cols_to_sum])
+print(merge_df)
+```
+
+```{r plot scatterplot}
+scatterplot_total_activity = merge_df |>
+  ggplot(aes(x = age, y = total_activity, color = sex)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "loess", se = FALSE) + 
+  facet_wrap(~ education) +  
+  labs(title = "Total Activities by Age, Gender, and Education Level",
+       x = "Age",
+       y = "Total Activity",
+       color = "Gender") 
+print(scatterplot_total_activity)
+```
+comment: 
+From the plot, we could see that the general trends of total activity in all types of population are decreasing with age. However, with age growing, the total activity of people with "less than high school" education level is decreasing faster than the other two education levels. The total activity of people with "more than high school" education level is decreasing slower than the other two education levels. Specifically, there is a peak of total activity in the population with "less than high school" education level at the age of around 60. For the people with "high school equivalent" education level, the increase or peak is at the age of around 40. For the people with "more than high school" education level, the trend is more stable and the peak for women is at the age of around 50, for man is at the age of around 60. For sex, in both "high school equivalent" and "more than high school", the total activity in women is lower than men at the same age. However, in the "less than high school" education level, the women older than 40 have higher total activity than men at the same age. 
+
+
+24 hours activity time course
+```{r 24 hours activity time course}
+time_course = merge_df |>
+  select(seqn, sex, education, starts_with("min")) |>
+  pivot_longer(cols = starts_with("min"), names_to = "minute", values_to = "activity") |>
+  mutate(minute = as.numeric(str_remove(minute, "min"))) 
+```
+
+```{r plot 24 hours activity time course}
+time_course_plot = 
+  ggplot(time_course, aes(x = minute, y = activity, color = sex)) +
+  geom_line(alpha = 0.6) +
+  geom_smooth(method = "loess", se = FALSE, linetype = "dashed") +
+  facet_wrap(~ education) +
+  labs(title = "24-Hour Activity Time Courses by Education Level",
+       x = "Minute of the Day",
+       y = "Activity Time",
+       color = "Gender")
+print(time_course_plot)
+```
+
+comment:
+We could see from the plot that the highest activity time in a day for different educational level is different, but the lowest activity time for them all are around 4:00-5:00. For the people with "less than high school" education level, the highest activity time is around 10:00-11:00, and the activity time is decreasing after that. For the people with "high school equivalent" education level, the highest activity time is around 8:00-9:00, and the activity time is decreasing after that with a small peak at around 19:00-20:00 for women in this educational type. For the people with "more than high school" education level, the highest activity time is around 8:00-9:00 for men and 20:00-21:00 for women, and the activity time is relatively low between these. In general, the activity time of people with "more than high school" education level is higher than the other two education levels. Although there are difference in the activity time between gender and educational level, the general trend in three panels are similar. The activity time is increasing to peak of the day at 12:00-13:00 and decreasing. Also, the difference between gender is not very significant. Maybe, the women with "less than high school" education level has slightly more activity time than men in this educational level, but the difference is not very significant. In the other two panels, activity time for men is slightly higher than women.
 
