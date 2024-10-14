@@ -7,6 +7,7 @@ output: github_document
 
 ```{r setup and figure preferrences}
 library(tidyverse)
+library(ggridges)
 library(patchwork)
 
 knitr::opts_chunk$set(
@@ -40,7 +41,7 @@ print(na_counts)
 ```
 
 - A short discription:
-There are 2595176 rows and 7 columns in this data frame. The data frame contains the information of the weather in New York from January 1, 1981 through December 31, 2010. The key variables are "date", "temperature_min", "temperature_max", "precipitation", "snowfall", "snow_depth". In all of the variables, the "prcp", "snow" and "snwd" variables are numeric variables and the "tmax", "tmin" and "id" are recognized as character variables. However, I would prefer to transfer "tman" and "tmin" into numeric characters. The missing data in every column is shown in the following table. 
+ This dataset contains `r nrow(ny_noaa)` rows and `r ncol(ny_noaa)` columns. The data frame contains the information of the weather in New York from January 1, 1981 through December 31, 2010. The key variables are "date", "temperature_min", "temperature_max", "precipitation", "snowfall", "snow_depth". In all of the variables, the "prcp", "snow" and "snwd" variables are numeric variables and the "tmax", "tmin" and "id" are recognized as character variables. However, I would prefer to transfer "tman" and "tmin" into numeric characters. The missing data in every column is shown in the following table. 
      id    date    prcp    snow    snwd    tmax    tmin 
       0       0  145838  381221  591786 1134358 1134420 
 We can see that there are around half of the data missing in the "tmax" and "tmin" columns. In "prcp", "snow" and "snwd" columns, there are less data missing, but still a large amount of data missing.
@@ -55,17 +56,14 @@ ny_noaa = ny_noaa |>
 ```
 
 - Ensure observations for temperature, precipitation, and snowfall are given in reasonable units
-we want the units for "prcp", "snow" and "snwd" to be tenths of mm, and the units for "tmax" and "tmin" to be in Celsius.  
+we want the units for "snow" and "snwd" to be tenths of mm and transfer the "tmax" and "tmin" to muneric characters. 
 ```{r change units}
 ny_noaa = ny_noaa |>
   mutate(tmax = as.numeric(tmax)) |>
   mutate(tmin = as.numeric(tmin)) |>
   mutate(
-    prcp = ifelse(is.na(prcp), NA, prcp * 1/10),
     snow = ifelse(is.na(snow), NA, snow * 1/10),
-    snwd = ifelse(is.na(snwd), NA, snwd * 1/10),
-    tmax = ifelse(is.na(tmax), NA, (tmax - 32) * 5/9),
-    tmin = ifelse(is.na(tmin), NA, (tmin - 32) * 5/9)
+    snwd = ifelse(is.na(snwd), NA, snwd * 1/10)
   )
 ```
 
@@ -77,7 +75,7 @@ common_snowfall = ny_noaa |>
 
 print(common_snowfall)
 ```
-We could find out that the most commonly observed value for snowfall is 0.0, which is 381221 times. I think this is because that snowfall is not a daily occurrence in most regions. Many places experience long periods without any snowfall, especially during non-winter months. Even in regions where snow is common, there are often days when no snow falls. 
+We could find out that the most commonly observed value for snowfall is 0.0, which is 381221 times. I think this is because that snowfall is not a daily occurrence in most regions. Many places experience long periods without any snowfall, especially during non-winter months. Even in regions where snow is common, there are often days when no snow falls. The second most commonly observed value is `NA`, indicating missingness.
 
 
 Question2:
@@ -119,13 +117,12 @@ print(p1)
 ```{r Distribution of snowfall values}
 p2 = ny_noaa |> 
   filter(snow > 0 & snow < 100) |> 
-  ggplot(aes(x = snow)) +
-  geom_histogram(fill = "skyblue", color = "black") +
-  facet_grid(. ~ year) +
+  ggplot(aes(x = snow, y = as.factor(year))) + 
+  geom_density_ridges() +
   labs(
     title = "Distribution of Snowfall (0 < snowfall < 100)",
     x = "Snowfall (tenths of mm)",
-    y = "Count"
+    y = "Year"
   )
 print(p2)
 ```
@@ -246,8 +243,206 @@ time_course_plot =
        y = "Activity Time",
        color = "Gender")
 print(time_course_plot)
+
 ```
 
 comment:
 We could see from the plot that the highest activity time in a day for different educational level is different, but the lowest activity time for them all are around 4:00-5:00. For the people with "less than high school" education level, the highest activity time is around 10:00-11:00, and the activity time is decreasing after that. For the people with "high school equivalent" education level, the highest activity time is around 8:00-9:00, and the activity time is decreasing after that with a small peak at around 19:00-20:00 for women in this educational type. For the people with "more than high school" education level, the highest activity time is around 8:00-9:00 for men and 20:00-21:00 for women, and the activity time is relatively low between these. In general, the activity time of people with "more than high school" education level is higher than the other two education levels. Although there are difference in the activity time between gender and educational level, the general trend in three panels are similar. The activity time is increasing to peak of the day at 12:00-13:00 and decreasing. Also, the difference between gender is not very significant. Maybe, the women with "less than high school" education level has slightly more activity time than men in this educational level, but the difference is not very significant. In the other two panels, activity time for men is slightly higher than women.
 
+
+# Problem 3
+Import, clean, and tidy these data, and describe the resulting dataset.
+```{r load data3}
+citi_jan_2020_df = read_csv("./data/citibike/Jan 2020 Citi.csv")
+citi_jan_2024_df = read_csv("./data/citibike/Jan 2024 Citi.csv")
+citi_july_2020_df = read_csv("./data/citibike/July 2020 Citi.csv")
+citi_july_2024_df = read_csv("./data/citibike/July 2024 Citi.csv")
+```
+check the data frame
+```{r check the data frame}
+head(citi_jan_2020_df)
+head(citi_jan_2024_df)
+head(citi_july_2020_df)
+head(citi_july_2024_df)
+```
+check for missing data
+```{r check for missing data}
+na_counts_jan_2020 = colSums(is.na(citi_jan_2020_df))
+na_counts_jan_2024 = colSums(is.na(citi_jan_2024_df))
+na_counts_july_2020 = colSums(is.na(citi_july_2020_df))
+na_counts_july_2024 = colSums(is.na(citi_july_2024_df))
+```
+We could find that most missing values are concentrated in the column of "start_station_name" and "end_station_name" in each of the four charts. Because the number of missing data is not very large, we could drop the missing data in these columns.
+
+clean and tidy the data
+```{r clean and tidy the data for citi_jan_2020_df}
+citi_jan_2020_df = citi_jan_2020_df |> 
+  janitor::clean_names() |>
+  drop_na(start_station_name, end_station_name) |>
+  mutate(year = 2020, month = 1) |> 
+  mutate(weekdays = case_when(
+    weekdays == "Monday" ~ 1,
+    weekdays == "Tuesday" ~ 2,
+    weekdays == "Wednesday" ~ 3,
+    weekdays == "Thursday" ~ 4,
+    weekdays == "Friday" ~ 5,
+    weekdays == "Saturday" ~ 6,
+    weekdays == "Sunday" ~ 7)) |> 
+  filter(duration <= 240) |> 
+  select(ride_id, member_casual, year, month, everything())
+print(citi_jan_2020_df)
+```
+```{r clean and tidy the data for citi_jan_2024_df}
+citi_jan_2024_df = citi_jan_2024_df |> 
+  janitor::clean_names() |>
+  drop_na(start_station_name, end_station_name) |>
+  mutate(year = 2024, month = 1) |> 
+  mutate(weekdays = case_when(
+    weekdays == "Monday" ~ 1,
+    weekdays == "Tuesday" ~ 2,
+    weekdays == "Wednesday" ~ 3,
+    weekdays == "Thursday" ~ 4,
+    weekdays == "Friday" ~ 5,
+    weekdays == "Saturday" ~ 6,
+    weekdays == "Sunday" ~ 7)) |> 
+  filter(duration <= 240) |> 
+  select(ride_id, member_casual, year, month, everything())
+print(citi_jan_2024_df)
+```
+```{r clean and tidy the data for citi_july_2020_df}
+citi_july_2020_df = citi_july_2020_df |> 
+  janitor::clean_names() |>
+  drop_na(start_station_name, end_station_name) |>
+  mutate(year = 2020, month = 7) |> 
+  mutate(weekdays = case_when(
+    weekdays == "Monday" ~ 1,
+    weekdays == "Tuesday" ~ 2,
+    weekdays == "Wednesday" ~ 3,
+    weekdays == "Thursday" ~ 4,
+    weekdays == "Friday" ~ 5,
+    weekdays == "Saturday" ~ 6,
+    weekdays == "Sunday" ~ 7)) |> 
+  filter(duration <= 240) |> 
+  select(ride_id, member_casual, year, month, everything())
+print(citi_july_2020_df)
+```
+```{r clean and tidy the data for citi_july_2024_df}
+citi_july_2024_df = citi_july_2024_df |> 
+  janitor::clean_names() |>
+  drop_na(start_station_name, end_station_name) |>
+  mutate(year = 2024, month = 7) |> 
+  mutate(weekdays = case_when(
+    weekdays == "Monday" ~ 1,
+    weekdays == "Tuesday" ~ 2,
+    weekdays == "Wednesday" ~ 3,
+    weekdays == "Thursday" ~ 4,
+    weekdays == "Friday" ~ 5,
+    weekdays == "Saturday" ~ 6,
+    weekdays == "Sunday" ~ 7)) |> 
+  filter(duration <= 240) |> 
+  select(ride_id, member_casual, year, month, everything())
+print(citi_july_2024_df)
+```
+summarize the data
+
+The data frame contains the information of the citibike rides in January and July of 2020 and 2024. The key variables are "ride_id", "member_casual", "year", "month", "rideable_type", "weekdays",  "start_station_name", "end_station_name", "duration". The "ride_id" is a unique identifier for each ride, the "member_casual" is a character variable indicating whether the rider is a member or a casual rider. The "year", "month" and "weekdays" are the year, month and weekday of the ride. The "rideable_type" tells whether the bike people rent is a classic bike or a electric bike. The "start_station_name" and "end_station_name" are the start and end station of the ride. The "duration" is the duration of the ride in minutes. 
+All the columns except "year", "month", "weekdays" and "duration" are character variables.
+The min, 1st quantile, median, 3rd quantile, max and mean duration in "citi_jan_2020_df" are 1.008, 5.284, 8.866, 15.137, 231.161 and 11.921.
+For citi_jan_2024_df, they are 1.002, 4.623, 7.664, 12.964, 225.526, 10.499
+For citi_july_2020_df, they are 1.006, 7.966, 14.552, 24.817, 238.780, 18.926
+For citi_july_2024_df, they are 1.008, 5.482, 9.593, 16.729, 232.051, 13.402
+We could find that in the same year, the average ride time in January is always shorter than that in July. In the same month of different year, the average ride time in 2024 is shorter than that in 2020. 
+Also, the number of people who use citybike in July is more than that in January in the same year. In the same month, the number of people who use citybike in 2024 is more than that in 2020.
+
+
+Produce a reader-friendly table showing the total number of rides in each combination of year and month separating casual riders and Citi Bike members.
+
+First, we need to combine the four data frames into one data frame.
+```{r combine the data frames for citibike}
+citi_df = bind_rows(citi_jan_2020_df, citi_jan_2024_df, citi_july_2020_df, citi_july_2024_df)
+```
+Then, we could produce the table.
+```{r produce the table}
+citi_df |>
+  group_by(year, month, member_casual) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = member_casual, values_from = count)
+```
+From the table, we could see that the number of casual and member riders are always bigger in July than in January in the same year, which may be because of the weather. In the same month, the number of member riders is always bigger than the number of casual riders, which may be because of the lower rental rate for member riders. Also, we could see that the user of citibike is increasing from 2020 to 2024, which shows that the citibike is becoming more and more popular.
+
+
+Make a table showing the 5 most popular starting stations for July 2024; include the number of rides originating from these stations.
+
+```{r the 5 most popular starting stations for July 2024}
+citi_july_2024_df |>
+  group_by(start_station_name) |>
+  summarize(count = n()) |>
+  arrange(desc(count)) |>
+  head(5)
+```
+So we could know that the 5 most popular starting stations for July 2024 are 
+station name                 count
+Pier 61 at Chelsea Piers	   163		
+University Pl & E 14 St   	 155		
+W 21 St & 6 Ave	             152		
+West St & Chambers St	       150		
+W 31 St & 7 Ave	             145	
+
+
+Make a plot to investigate the effects of day of the week, month, and year on median ride duration. This plot can include one or more panels, but should facilitate comparison across all variables of interest. 
+
+```{r calculate the median ride duration}
+p <- citi_df |>
+  group_by(year, month, weekdays) |>
+  summarize(median_duration = median(duration)) |>
+  ggplot(aes(x = weekdays, y = median_duration, color = factor(year))) +
+  scale_x_continuous(breaks = 1:7) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~ month) +
+  labs(
+    title = "Median Ride Duration by Day of the Week, Month, and Year",
+    x = "Weekdays (1 = Monday, 7 = Sunday)",
+    y = "Median Ride Duration (minutes)",
+    color = "Year"
+  )
+print(p)
+```
+
+From the plot, we could see that the median ride duration is generally longer in 2020 than in 2024 in the same month and the same weekday, which might be because the citibike is less popular in 2020 or because with time going, the perspective of riding a bike is weakened. Also, the median ride duration is longer in July than in January in the same weekday and the same year, which could be because the weather in July is more suitable for biking. Besides, I found that for the trend of median ride duration in a week, there is always a peak at the weekend, on which people have more free time and always a valley on Friday, on which people tend to have a rest after a week's work. The peak and valley are more significant in 2020 than in 2024.
+
+
+
+There were relatively few electric Citi Bikes in 2020, but many more are available now. For data in 2024, make a figure that shows the impact of month, membership status, and bike type on the distribution of ride duration.
+
+```{r calculate the distribution of ride duration}
+citi_df_2024 = bind_rows(citi_jan_2024_df, citi_july_2024_df)
+p1 <- citi_df_2024 |> 
+  ggplot(aes(x = duration, fill = member_casual)) +
+  geom_histogram(binwidth = 5, position = "dodge", alpha = 0.7) +
+  facet_wrap(~ month + rideable_type) +
+  labs(
+    title = "Impact of Month, Membership Status, and Bike Type on Ride Duration (2024)",
+    x = "Ride Duration (minutes)",
+    y = "Count",
+    fill = "Membership Status"
+  )
+print(p1)
+
+p2 <- citi_df_2024 |>
+  ggplot(aes(x = factor(month), y = duration, fill = member_casual)) +
+  geom_boxplot() +
+  facet_wrap(~ rideable_type) +
+  labs(
+    title = "Impact of Month, Membership Status, and Bike Type on Ride Duration (2024)",
+    x = "Month",
+    y = "Ride Duration (minutes)",
+    fill = "Membership Status"
+  )
+print(p2)
+
+
+```
+
+We could find from the box plot that the duration time for January and July in 2024 mainly are concentrated in the range of 0-50 minutes but still contain many outliers ranging from 100 to 200, which could explain the extreme right skewed in the histogram. The median duration time for electric bikes is generally shorter than that for classic bikes. The distribution of ride duration for electric bikes is more concentrated than that for classic bikes. 
+For histogram, we could see that the frequency of riding electric bikes significantly higher than riding classic bikes in 2024 no matter in January or July and no matter the rider is a member or a casual rider. For membership status, there are more member riders than casual riders in 2024. They both are mainly concentrated between the duration of 0-50 minutes. The distribution of ride duration for member riders is more concentrated than that for casual riders. Also, the distribution of ride duration for member riders is more right skewed than that for casual riders. For month, the distribution of ride duration in July is more right skewed than that in January. The frequency of ride duration in July is more than that in January in general. 
